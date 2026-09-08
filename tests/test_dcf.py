@@ -2,6 +2,7 @@
 
 import pytest
 
+from src.dcf.equity_bridge import implied_share_price, net_debt
 from src.dcf.projections import build_fcf_projection
 from src.dcf.terminal_value import discount_to_present, enterprise_value, gordon_growth_terminal_value
 from src.dcf.wacc import compute_wacc, cost_of_equity
@@ -62,3 +63,61 @@ def test_discount_to_present_reduces_future_cash_flows():
 def test_enterprise_value_sums_pv_components():
     result = enterprise_value(unlevered_fcfs=[100.0, 110.0], terminal_value=2000.0, wacc=0.10)
     assert result["enterprise_value"] == pytest.approx(result["sum_pv_fcfs"] + result["pv_terminal_value"])
+
+
+def test_nwc_scales_with_revenue_change_not_revenue_level():
+    """Working capital is a stock; only its movement is a cash flow.
+
+    Base revenue 1000 growing 10% means revenue rises by 100 in year 1, so at
+    2% of the change the working capital drag is 2.0, not 2% of the 1100 level.
+    """
+    assumptions = _sample_assumptions()
+    assumptions["dcf"]["nwc_pct_revenue_change"] = [0.02] * 5
+    df = build_fcf_projection(base_revenue=1000.0, base_year=2025, assumptions=assumptions)
+
+    assert df.loc[2026, "revenue_change"] == pytest.approx(100.0)
+    assert df.loc[2026, "nwc_change"] == pytest.approx(2.0)
+    assert df.loc[2026, "nwc_change"] != pytest.approx(0.02 * df.loc[2026, "revenue"])
+
+
+def test_leases_stay_out_of_the_dcf_bridge_by_default():
+    """Rent is already expensed above EBIT, so the lease liability is not net debt."""
+    nd = net_debt(
+        total_debt=5_419_195_904,
+        cash=677_857_024,
+        treat_leases_as_debt=False,
+        lease_share_of_total_debt=1.0,
+    )
+    assert nd == pytest.approx(-677_857_024)
+
+
+def test_capitalized_lease_treatment_restores_the_liability():
+    nd = net_debt(
+        total_debt=5_419_195_904,
+        cash=677_857_024,
+        treat_leases_as_debt=True,
+        lease_share_of_total_debt=1.0,
+    )
+    assert nd == pytest.approx(5_419_195_904 - 677_857_024)
+
+
+def test_double_counting_leases_costs_the_full_liability_per_share():
+    """The two treatments differ by exactly the lease liability per share."""
+    shares = 1_342_616_000.0
+    ev = 25_000_000_000.0
+    kwargs = dict(total_debt=5_419_195_904, cash=677_857_024, lease_share_of_total_debt=1.0)
+
+    correct = implied_share_price(ev, net_debt(treat_leases_as_debt=False, **kwargs), shares)
+    double_counted = implied_share_price(ev, net_debt(treat_leases_as_debt=True, **kwargs), shares)
+
+    assert correct - double_counted == pytest.approx(5_419_195_904 / shares)
+
+
+def test_lease_share_must_be_a_fraction():
+    with pytest.raises(ValueError):
+        net_debt(total_debt=100.0, cash=0.0, treat_leases_as_debt=False, lease_share_of_total_debt=1.5)
+
+
+def test_implied_share_price_rejects_zero_share_count():
+    with pytest.raises(ValueError):
+        implied_share_price(enterprise_value=1000.0, net_debt_amount=0.0, shares_diluted=0.0)

@@ -10,13 +10,16 @@ to outputs/figures/.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import yaml
 
 from src.comps.implied_valuation import implied_valuation_from_comps
 from src.comps.peer_data import build_comps_table, peer_summary_stats
 from src.data.fetch import fetch_comp_snapshots, fetch_company_snapshot, fetch_risk_free_rate
+from src.dcf.equity_bridge import net_debt as dcf_net_debt
 from src.dcf.projections import build_fcf_projection
-from src.dcf.sensitivity import implied_share_price, sensitivity_table
+from src.dcf.sensitivity import sensitivity_table
 from src.dcf.terminal_value import enterprise_value, gordon_growth_terminal_value
 from src.dcf.wacc import compute_wacc
 from src.output.charts import plot_revenue_projection, plot_valuation_summary
@@ -24,7 +27,9 @@ from src.output.report import save_table
 
 
 def main() -> None:
-    assumptions = yaml.safe_load(open("config/assumptions.yaml"))
+    config_path = Path(__file__).parent / "config" / "assumptions.yaml"
+    with config_path.open() as f:
+        assumptions = yaml.safe_load(f)
     ticker = assumptions["target"]["ticker"]
     base_year = assumptions["target"]["base_fiscal_year"]
 
@@ -55,12 +60,21 @@ def main() -> None:
     tv = gordon_growth_terminal_value(fcfs[-1], wacc, terminal_growth)
     ev_result = enterprise_value(fcfs, tv, wacc)
 
-    net_debt = target.total_debt - target.cash
+    # Rent is already expensed above EBIT, so the lease liability stays OUT of
+    # this bridge -- subtracting it too would charge shareholders twice for the
+    # same obligation. See src/dcf/equity_bridge.py for the full reasoning.
+    bridge = assumptions["equity_bridge"]
+    net_debt = dcf_net_debt(
+        total_debt=target.total_debt,
+        cash=target.cash,
+        treat_leases_as_debt=bridge["treat_leases_as_debt"],
+        lease_share_of_total_debt=bridge["lease_share_of_total_debt"],
+    )
     equity_value = ev_result["enterprise_value"] - net_debt
     dcf_price = equity_value / target.shares_diluted
 
     print(f"Enterprise value: ${ev_result['enterprise_value']/1e9:.2f}B")
-    print(f"Net debt (capitalized leases - cash): ${net_debt/1e9:.2f}B")
+    print(f"Net debt (leases excluded, net of cash): ${net_debt/1e9:.2f}B")
     print(f"Equity value: ${equity_value/1e9:.2f}B")
     print(f"DCF implied share price: ${dcf_price:.2f}")
 

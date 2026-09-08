@@ -48,13 +48,19 @@ dcf:
     - 0.030
     - 0.030
 
-  # Change in net working capital as % of revenue (small ongoing cash use).
+  # Change in net working capital as % of the year-over-year CHANGE in revenue.
+  # Working capital is a balance-sheet stock, so only its movement is a cash
+  # flow -- each incremental dollar of revenue ties up ~2 cents of net working
+  # capital here. That is deliberately conservative for a restaurant: CMG
+  # collects from guests immediately and pays suppliers on terms, so it runs
+  # negative working capital and growth arguably RELEASES cash. Set this
+  # negative to model that; the positive value keeps the base case cautious.
   nwc_pct_revenue_change:
-    - 0.003
-    - 0.003
-    - 0.003
-    - 0.003
-    - 0.003
+    - 0.020
+    - 0.020
+    - 0.020
+    - 0.020
+    - 0.020
 
   tax_rate: 0.25
   terminal_growth_rate: 0.030
@@ -75,7 +81,20 @@ wacc:
   beta_source: yfinance     # 5Y monthly beta
 
 equity_bridge:
-  # Even though WACC treats CMG as all-equity-funded, the EV -> equity value
-  # bridge still nets out the capitalized lease liability and cash, since it's
-  # a real balance-sheet claim ahead of equity holders.
-  net_debt_field: total_debt_minus_cash
+  # Rent expense is already deducted above the operating-income line, so the
+  # cost of CMG's leases is ALREADY inside the unlevered free cash flow this
+  # model discounts. Subtracting the capitalized lease liability again in the
+  # EV -> equity bridge would charge shareholders twice for the same
+  # obligation. Set treat_leases_as_debt: true only if you also add rent back
+  # to EBIT and depreciate the right-of-use asset. See src/dcf/equity_bridge.py.
+  treat_leases_as_debt: false
+
+  # Fraction of reported total debt that is capitalized operating leases rather
+  # than bonds or bank borrowings. CMG has no traditional financial debt, so
+  # all of its reported ~$5.4B "debt" is lease liability.
+  lease_share_of_total_debt: 1.0
+
+  # The comps bridge intentionally ignores the settings above. Peer EV/Revenue
+  # and EV/EBITDA multiples are quoted on a lease-INCLUSIVE enterprise value,
+  # so applying them to CMG requires a lease-inclusive bridge to stay
+  # apples-to-apples. Mixing the two conventions is the error being avoided.
