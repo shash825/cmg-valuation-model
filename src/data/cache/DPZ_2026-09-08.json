@@ -1,0 +1,19 @@
+{
+  "ticker": "DPZ",
+  "name": "Domino's Pizza, Inc.",
+  "price": 335.41,
+  "shares_diluted": 34237646.0,
+  "market_cap": 11095945216,
+  "total_debt": 5122852864,
+  "cash": 164836000,
+  "beta": 0.946,
+  "revenue": 4939994000.0,
+  "ebitda": 1055137000.0,
+  "operating_income": 949946000.0,
+  "net_income": 601704000.0,
+  "diluted_eps": 17.57,
+  "ev_to_ebitda": 15.868,
+  "ev_to_revenue": 3.23,
+  "trailing_pe": 19.024958,
+  "revenue_growth": 0.043
+}

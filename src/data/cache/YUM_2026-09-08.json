@@ -1,0 +1,19 @@
+{
+  "ticker": "YUM",
+  "name": "Yum! Brands, Inc.",
+  "price": 149.54,
+  "shares_diluted": 281000000.0,
+  "market_cap": 40809627648,
+  "total_debt": 13413999616,
+  "cash": 683000000,
+  "beta": 0.551,
+  "revenue": 8214000000.0,
+  "ebitda": 2784000000.0,
+  "operating_income": 2530000000.0,
+  "net_income": 1559000000.0,
+  "diluted_eps": 5.55,
+  "ev_to_ebitda": 17.555,
+  "ev_to_revenue": 6.175,
+  "trailing_pe": 18.833752,
+  "revenue_growth": 0.122
+}

@@ -1,0 +1,19 @@
+{
+  "ticker": "SHAK",
+  "name": "Shake Shack Inc.",
+  "price": 67.405,
+  "shares_diluted": 41847000.0,
+  "market_cap": 2883688192,
+  "total_debt": 952086016,
+  "cash": 307961984,
+  "beta": 1.664,
+  "revenue": 1445306000.0,
+  "ebitda": 183556000.0,
+  "operating_income": 85757000.0,
+  "net_income": 45725000.0,
+  "diluted_eps": 1.09,
+  "ev_to_ebitda": 20.166,
+  "ev_to_revenue": 2.239,
+  "trailing_pe": 70.95263,
+  "revenue_growth": 0.172
+}

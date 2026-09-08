@@ -1,0 +1,19 @@
+{
+  "ticker": "CMG",
+  "name": "Chipotle Mexican Grill, Inc.",
+  "price": 36.95,
+  "shares_diluted": 1342616000.0,
+  "market_cap": 46757195776,
+  "total_debt": 5419195904,
+  "cash": 677857024,
+  "beta": 0.937,
+  "revenue": 11925601000.0,
+  "ebitda": 2374190000.0,
+  "operating_income": 2012808000.0,
+  "net_income": 1535761000.0,
+  "diluted_eps": 1.14,
+  "ev_to_ebitda": 22.642,
+  "ev_to_revenue": 4.146,
+  "trailing_pe": 34.212963,
+  "revenue_growth": 0.093
+}

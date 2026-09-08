@@ -1,0 +1,19 @@
+{
+  "ticker": "WING",
+  "name": "Wingstop Inc.",
+  "price": 109.45,
+  "shares_diluted": 28074000.0,
+  "market_cap": 2981696512,
+  "total_debt": 1272475008,
+  "cash": 127455000,
+  "beta": 1.78,
+  "revenue": 696853000.0,
+  "ebitda": 298041000.0,
+  "operating_income": 185826000.0,
+  "net_income": 174267000.0,
+  "diluted_eps": 6.21,
+  "ev_to_ebitda": 17.605,
+  "ev_to_revenue": 5.717,
+  "trailing_pe": 25.81368,
+  "revenue_growth": 0.064
+}

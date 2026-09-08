@@ -1,0 +1,81 @@
+# All modeling assumptions live here so they're easy to find, cite, and change
+# without touching any code. Every number below is explained in the README's
+# "Methodology & Assumptions" section.
+
+target:
+  ticker: CMG
+  base_fiscal_year: 2025          # last actual reported fiscal year, used as the DCF's starting point
+
+comps:
+  # Fast-casual / restaurant peer set used for the comparable companies analysis
+  tickers: [SG, SHAK, WING, DPZ, YUM, CAVA]
+
+dcf:
+  projection_years: 5
+
+  # Annual revenue growth for each projected year (FY2026-FY2030).
+  # Y1-Y2 anchor to analyst consensus; growth fades toward a sustainable
+  # long-run rate as the restaurant base matures.
+  revenue_growth:
+    - 0.092   # FY2026
+    - 0.100   # FY2027
+    - 0.090   # FY2028
+    - 0.080   # FY2029
+    - 0.070   # FY2030
+
+  # Operating margin (EBIT / revenue) for each projected year. Recent 4-year
+  # actual range was 14.0%-17.5%; assumes modest, gradual operating leverage.
+  operating_margin:
+    - 0.165   # FY2026
+    - 0.168   # FY2027
+    - 0.171   # FY2028
+    - 0.173   # FY2029
+    - 0.175   # FY2030
+
+  # Capital expenditure as % of revenue, tapering slightly as unit growth normalizes.
+  capex_pct_revenue:
+    - 0.055
+    - 0.054
+    - 0.052
+    - 0.051
+    - 0.050
+
+  # D&A as % of revenue, held flat near the recent actual (~3.0%).
+  da_pct_revenue:
+    - 0.030
+    - 0.030
+    - 0.030
+    - 0.030
+    - 0.030
+
+  # Change in net working capital as % of revenue (small ongoing cash use).
+  nwc_pct_revenue_change:
+    - 0.003
+    - 0.003
+    - 0.003
+    - 0.003
+    - 0.003
+
+  tax_rate: 0.25
+  terminal_growth_rate: 0.030
+
+  # Sensitivity table ranges
+  sensitivity:
+    wacc_range: [0.075, 0.080, 0.085, 0.090, 0.095, 0.100, 0.105]
+    terminal_growth_range: [0.020, 0.025, 0.030, 0.035, 0.040]
+
+wacc:
+  # Method: cost-of-equity-only. CMG carries no traditional bonds/bank debt --
+  # its only "debt" on record is capitalized operating lease liabilities, which
+  # are already expensed above the operating-income line. WACC is set equal to
+  # the cost of equity (CAPM) rather than blending in lease liabilities as if
+  # they were financial debt. See README for the alternative treatment considered.
+  risk_free_rate: 0.048     # 10Y US Treasury yield
+  equity_risk_premium: 0.050
+  beta_source: yfinance     # 5Y monthly beta
+
+equity_bridge:
+  # Even though WACC treats CMG as all-equity-funded, the EV -> equity value
+  # bridge still nets out the capitalized lease liability and cash, since it's
+  # a real balance-sheet claim ahead of equity holders.
+  net_debt_field: total_debt_minus_cash

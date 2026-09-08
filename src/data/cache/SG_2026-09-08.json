@@ -1,0 +1,19 @@
+{
+  "ticker": "SG",
+  "name": "Sweetgreen, Inc.",
+  "price": 6.95,
+  "shares_diluted": 117956165.0,
+  "market_cap": 827337088,
+  "total_debt": 355395008,
+  "cash": 142631008,
+  "beta": 2.206,
+  "revenue": 679474000.0,
+  "ebitda": -61454000.0,
+  "operating_income": -111407000.0,
+  "net_income": -134065000.0,
+  "diluted_eps": -1.14,
+  "ev_to_ebitda": -17.278,
+  "ev_to_revenue": 1.506,
+  "trailing_pe": 77.22221,
+  "revenue_growth": 0.038
+}
