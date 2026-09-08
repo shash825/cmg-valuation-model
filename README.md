@@ -164,9 +164,3 @@ Both methods still land below CMG's current $36.95 price at their base case/medi
 - **Terminal reinvestment is not normalized.** CapEx stays at 5.0% of revenue against 3.0% D&A in the terminal year, so the perpetuity has CMG reinvesting at ~1.7x depreciation forever while growing only 3%. That is conservative by construction and is a meaningful part of why the DCF sits below market. Tying terminal reinvestment to growth and returns on capital would be the more standard treatment.
 - **Share count mixes vintages.** The bridge divides by last fiscal year's *average* diluted shares while the market comparison uses today's price. Those differ by roughly 6% given CMG's buyback pace.
 - **The lease-as-debt alternative is a config toggle, not a fully modeled scenario.** Flipping `treat_leases_as_debt` changes the bridge but does not add rent back to EBIT or depreciate the right-of-use asset, so it shows the direction of that treatment rather than a complete implementation of it.
-
-## Resume bullet
-
-> Built a Python DCF and comparable-companies valuation model for Chipotle (CMG) using live market data (yfinance), including a 5-year FCF projection, CAPM-based WACC, WACC/terminal-growth sensitivity analysis, and a 6-company comps table — packaged as a tested, modular repo rather than a single notebook.
-
-> Identified and corrected a lease double-count in the enterprise-value-to-equity bridge worth $4.04/share, and a peer-screening flaw that let a loss-making comparable inflate the peer P/E median by 88%; covered both with regression tests.
