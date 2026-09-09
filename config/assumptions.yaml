@@ -65,6 +65,14 @@ dcf:
   tax_rate: 0.25
   terminal_growth_rate: 0.030
 
+  # Terminal value method: gordon_growth grows the final projected FCF in
+  # perpetuity; reinvestment_rate derives it from a return on capital instead
+  # (TV = NOPAT * (1+g) * (1 - g/ROIC) / (WACC - g)), which makes the
+  # growth-vs-returns trade-off explicit. The model reports the ROIC implied by
+  # whichever method is active, so the two can be compared directly.
+  terminal_method: gordon_growth
+  terminal_return_on_capital: 0.185   # only used when terminal_method: reinvestment_rate
+
   # Sensitivity table ranges
   sensitivity:
     wacc_range: [0.075, 0.080, 0.085, 0.090, 0.095, 0.100, 0.105]
@@ -98,3 +106,36 @@ equity_bridge:
   # and EV/EBITDA multiples are quoted on a lease-INCLUSIVE enterprise value,
   # so applying them to CMG requires a lease-inclusive bridge to stay
   # apples-to-apples. Mixing the two conventions is the error being avoided.
+
+# Bull / base / bear cases. Each scenario overrides only the keys it lists;
+# anything omitted falls through to the dcf: block above. The base case is the
+# dcf: block unchanged, listed here so all three appear in the output table.
+#
+# The sensitivity grid flexes the DISCOUNT RATE. These scenarios flex the
+# BUSINESS. They answer different questions and neither substitutes for the
+# other: a grid of WACCs cannot tell you what happens if comps go negative.
+scenarios:
+  bear:
+    label: "Bear: growth stalls, margins revert to the low end"
+    # FY2025 grew 5.4% amid a comp-sales slowdown. Bear assumes that was the
+    # start of a trend rather than a trough, and that margins give back the
+    # operating leverage of the last two years -- 14.5% is the bottom of CMG's
+    # actual 4-year range, not a made-up floor.
+    revenue_growth: [0.050, 0.040, 0.035, 0.030, 0.030]
+    operating_margin: [0.155, 0.150, 0.148, 0.147, 0.145]
+    terminal_growth_rate: 0.020
+
+  base:
+    label: "Base: consensus for two years, then fade to trend"
+    # No overrides -- this is the dcf: block above.
+
+  bull:
+    label: "Bull: reacceleration holds and throughput lifts margins"
+    # Growth returns toward the FY2023-24 pace (+14.4%, +14.3%) without fully
+    # matching it, on continued unit growth, Chipotlanes, and international.
+    # NOTE: the 19.0% exit margin is ABOVE CMG's 4-year peak of 17.5%. That is
+    # the bull thesis, not an observed figure, and it is the single most
+    # aggressive assumption anywhere in this model.
+    revenue_growth: [0.110, 0.130, 0.120, 0.110, 0.100]
+    operating_margin: [0.170, 0.178, 0.184, 0.187, 0.190]
+    terminal_growth_rate: 0.035

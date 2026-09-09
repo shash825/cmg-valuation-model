@@ -39,6 +39,26 @@ class CompanySnapshot:
     trailing_pe: float
     revenue_growth: float
 
+    @property
+    def shares_outstanding_current(self) -> float:
+        """Today's share count, implied by market cap / price.
+
+        `shares_diluted` is the prior fiscal year's *average* diluted count.
+        Averaging it over a year during which the company was buying back stock
+        makes it stale: for CMG it is ~6% higher than the count the market is
+        actually pricing today. Dividing an equity value by the stale figure and
+        then comparing the result to today's quoted price mixes two vintages and
+        understates the per-share value.
+
+        Market cap divided by price recovers the count implied by the same
+        quote the model is being compared against, which keeps the comparison
+        internally consistent. Falls back to the reported diluted average when
+        either input is missing.
+        """
+        if self.price > 0 and self.market_cap > 0:
+            return self.market_cap / self.price
+        return self.shares_diluted
+
 
 def _cache_path(ticker: str) -> Path:
     return CACHE_DIR / f"{ticker}_{date.today().isoformat()}.json"

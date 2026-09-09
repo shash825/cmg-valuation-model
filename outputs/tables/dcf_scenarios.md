@@ -1,0 +1,5 @@
+| scenario   | label                                                   |   exit_revenue_bn |   exit_operating_margin |   terminal_growth |   implied_terminal_roic |   implied_share_price |   upside_vs_market |
+|:-----------|:--------------------------------------------------------|------------------:|------------------------:|------------------:|------------------------:|----------------------:|-------------------:|
+| bear       | Bear: growth stalls, margins revert to the low end      |           14.2994 |                   0.145 |             0.02  |                0.105672 |               12.7625 |          -0.654601 |
+| base       | Base: consensus for two years, then fade to trend       |           18.0439 |                   0.175 |             0.03  |                0.184786 |               21.1965 |          -0.426347 |
+| bull       | Bull: reacceleration holds and throughput lifts margins |           20.4557 |                   0.19  |             0.035 |                0.228594 |               27.5863 |          -0.253416 |

@@ -1,10 +1,14 @@
 # CMG Valuation Model
 
+[![tests](https://github.com/shash825/cmg-valuation-model/actions/workflows/tests.yml/badge.svg)](https://github.com/shash825/cmg-valuation-model/actions/workflows/tests.yml)
+
 A DCF and comparable companies valuation of Chipotle Mexican Grill (NYSE: CMG), built in Python with live data from [yfinance](https://github.com/ranaroussi/yfinance).
 
-**TL;DR:** As of the last data pull, CMG traded at **$36.95**. This model's base-case DCF implies **$19.98/share**, and a comps-based range (peer EV/Revenue and EV/EBITDA multiples applied to CMG) implies **$9.85–$75.54**, median-multiple midpoint around **$31**. In short: the market is pricing in more growth/durability than a conservative base case captures — see [Interpreting the gap](#interpreting-the-gap-to-market-price) below for why, and the [sensitivity table](#sensitivity-wacc-vs-terminal-growth) for what assumptions would justify the current price. At the generous corner of that grid the DCF reaches $35.90, close enough to the market price that the remaining disagreement is about assumptions rather than arithmetic.
+**TL;DR:** As of the last data pull, CMG traded at **$36.95**. This model's base-case DCF implies **$21.20/share**, with a bear case of **$12.76** and a bull case of **$27.59**. A comps-based range (peer EV/Revenue and EV/EBITDA multiples applied to CMG) implies **$10.45–$80.14**, median-multiple midpoint around **$33**. In short: the market is pricing in more growth/durability than a conservative base case captures — see [Interpreting the gap](#interpreting-the-gap-to-market-price) below for why, and the [sensitivity table](#sensitivity-wacc-vs-terminal-growth) for what assumptions would justify the current price. At the generous corner of that grid the DCF reaches $38.10, just above the market price — so today's valuation is *reachable* on defensible inputs, but only at the edge of them.
 
 ![Valuation summary](outputs/figures/valuation_summary.png)
+
+![Scenarios](outputs/figures/scenarios.png)
 
 ## What this is
 
@@ -20,7 +24,8 @@ Neither approach is "the answer" — they're two different lenses, and the gap b
 ```
 config/assumptions.yaml     All inputs in one place — growth rates, margins, WACC components, comp set
 src/data/fetch.py           Pulls & locally caches financials via yfinance (reproducible re-runs)
-src/dcf/                    Revenue/FCF projection, WACC, terminal value, EV->equity bridge, sensitivity
+src/dcf/                    Revenue/FCF projection, WACC, terminal value, EV->equity bridge,
+                            discount-rate sensitivity, bull/base/bear scenarios
 src/comps/                  Peer multiples table, implied valuation from comps
 src/output/                 Chart and table generation
 main.py                     Runs the full pipeline end to end
@@ -28,6 +33,8 @@ notebooks/walkthrough.ipynb Thin, narrated notebook over the same src/ modules (
 outputs/                    Generated tables (CSV + Markdown) and charts (PNG)
 tests/test_dcf.py           Sanity checks on the DCF math and the equity bridge
 tests/test_comps.py         Checks on peer eligibility — which multiples are meaningful
+tests/test_scenarios.py     Scenario isolation, ordering, and terminal-value diagnostics
+tests/test_share_count.py   Share-count vintage: the count must match the price it's compared to
 ```
 
 ## How to run it
@@ -100,13 +107,30 @@ There are exactly two internally consistent treatments:
 
 Mixing them — expensing rent in the cash flows *and* treating leases as debt in the bridge — is a common error and the specific one this module exists to prevent. Flipping `equity_bridge.treat_leases_as_debt` in the config switches the bridge, so the alternative can be quantified rather than only described.
 
-Under the operating-lease treatment CMG has **no financial debt at all**, so net debt is simply negative cash: **–$0.68B**. Enterprise value of $26.14B bridges to $26.82B of equity value, or $19.98 per diluted share.
+Under the operating-lease treatment CMG has **no financial debt at all**, so net debt is simply negative cash: **–$0.68B**. Enterprise value of $26.14B bridges to $26.82B of equity value, or $21.20 per share on the current count.
 
 **The comps side deliberately uses the opposite convention.** Peer EV/Revenue and EV/EBITDA multiples are quoted on a lease-*inclusive* enterprise value, because the data provider rolls lease liabilities into total debt for every company in the peer set. Applying those multiples to CMG therefore requires a lease-inclusive bridge to stay apples-to-apples. Using the DCF's bridge there would inflate the comps-implied price by measuring CMG on a different basis than the peers it is being compared to.
 
-### Terminal value
+### Terminal value, and the check that matters
 
 Gordon growth (perpetuity growth) method, with a 3.0% terminal growth rate — roughly a long-run nominal GDP proxy, comfortably below the 9.49% WACC.
+
+Terminal value is most of any DCF, so the model reports what its terminal year actually *implies* rather than leaving that buried inside the capex assumption:
+
+| Terminal-year diagnostic | Value |
+|---|---|
+| CapEx / D&A | 1.67x |
+| Net reinvestment (capex − D&A + ΔNWC) | $384M |
+| Net reinvestment as % of NOPAT | 16.2% |
+| **Implied return on new capital** (g ÷ reinvestment rate) | **18.5%** |
+
+The first line looks alarming on its own: capex running at 1.67x depreciation forever, for a business growing 3%. The last line is the one that matters. Net of the depreciation it is replacing, that capex is only 16.2% of after-tax operating profit, which implies an 18.5% return on the capital being added. For a business earning high-teens-to-low-20s returns, that is a reasonable steady state, not an aggressive one.
+
+Reporting both numbers is the point: judging the terminal value off the raw capex ratio would flag a problem that isn't there. `terminal_method: reinvestment_rate` in the config inverts the calculation and derives terminal value from a return-on-capital assumption directly, which makes the growth-versus-returns trade-off explicit — growth only creates value while ROIC exceeds WACC.
+
+### Share count
+
+The bridge divides by **today's** share count, implied by market cap ÷ price (1.265B), not last fiscal year's **average** diluted count (1.343B). CMG has been buying back stock, so the fiscal-year average is ~6.1% too high. Dividing an equity value by a stale count and then comparing the answer to today's quoted price mixes two vintages and understates value per share by that same 6%.
 
 ## Sensitivity: WACC vs. terminal growth
 
@@ -114,15 +138,32 @@ Implied share price across a range of WACC and terminal growth assumptions ([ful
 
 | WACC \ g | 2.0% | 2.5% | 3.0% | 3.5% | 4.0% |
 |---|---|---|---|---|---|
-| 7.5% | $24.41 | $26.42 | $28.88 | $31.95 | $35.90 |
-| 8.0% | $22.35 | $24.00 | $25.97 | $28.38 | $31.40 |
-| 8.5% | $20.61 | $21.97 | $23.59 | $25.53 | $27.90 |
-| **9.0%** | $19.12 | $20.27 | $21.61 | $23.19 | $25.10 |
-| **9.5%** | $17.82 | $18.80 | **$19.93** | $21.25 | $22.81 |
-| 10.0% | $16.69 | $17.53 | $18.50 | $19.60 | $20.90 |
-| 10.5% | $15.70 | $16.43 | $17.25 | $18.20 | $19.28 |
+| 7.5% | $25.90 | $28.03 | $30.64 | $33.90 | **$38.10** |
+| 8.0% | $23.71 | $25.46 | $27.55 | $30.11 | $33.32 |
+| 8.5% | $21.86 | $23.32 | $25.03 | $27.09 | $29.60 |
+| **9.0%** | $20.28 | $21.50 | $22.93 | $24.61 | $26.63 |
+| **9.5%** | $18.91 | $19.95 | **$21.15** | $22.55 | $24.20 |
+| 10.0% | $17.71 | $18.60 | $19.62 | $20.80 | $22.17 |
+| 10.5% | $16.65 | $17.43 | $18.30 | $19.31 | $20.46 |
 
-At the most generous corner of this grid (7.5% WACC, 4.0% terminal growth), the DCF implies $35.90 — within about 3% of the $36.95 market price. So the market's valuation is reachable inside a defensible assumption set, but only at its edge: it requires a cost of equity roughly two points below the CAPM output *and* terminal growth a full point above long-run nominal GDP. At the base-case WACC of 9.49%, no terminal growth rate in this range gets there.
+Exactly one cell in this grid clears the $36.95 market price: 7.5% WACC with 4.0% terminal growth, at $38.10. That is the useful result. The market's valuation is *reachable* on defensible inputs rather than requiring something absurd, but it needs a cost of equity two full points below the CAPM output **and** terminal growth above long-run nominal GDP, simultaneously. At the base-case WACC of 9.49%, no terminal growth rate in this range gets there.
+
+## Scenarios: flexing the business, not the discount rate
+
+The grid above asks what the *same forecast* is worth to investors demanding different returns. It cannot tell you what CMG is worth if comparable sales turn negative. These scenarios flex the operating assumptions instead — revenue path, margins, terminal growth — at a constant 9.49% WACC ([full table](outputs/tables/dcf_scenarios.csv)):
+
+| Scenario | Exit revenue | Exit margin | Terminal g | Implied ROIC | Implied price | vs. market |
+|---|---|---|---|---|---|---|
+| **Bear** | $14.3B | 14.5% | 2.0% | 10.6% | $12.76 | −65% |
+| **Base** | $18.0B | 17.5% | 3.0% | 18.5% | $21.20 | −43% |
+| **Bull** | $20.5B | 19.0% | 3.5% | 22.9% | $27.59 | −25% |
+
+Each scenario overrides only the assumptions it declares; everything else falls through to the shared config block, so the cases stay honest about what actually differs between them. A typo in a scenario key raises an error rather than silently changing nothing.
+
+Two things worth stating plainly:
+
+- **Even the bull case doesn't reach the market price.** Getting to $36.95 on operating assumptions alone would need something more aggressive than a 19.0% exit margin, which is already *above* CMG's four-year peak of 17.5%. The market price is more easily explained by a lower discount rate than by better operations, which is a genuinely different claim about why the stock is expensive.
+- **The bear case's implied 10.6% return on capital is still above the 9.49% WACC.** Even when growth stalls and margins revert, this model has CMG creating value at the margin. A true bear case would need returns to fall below the cost of capital, and nothing in these assumptions does that.
 
 ## Comparable companies
 
@@ -144,9 +185,9 @@ Full detail (including implied share price by multiple) is in [`outputs/tables/c
 
 **P/E is still excluded from the headline comps range.** Even after that screen, CAVA's ~107x P/E (a hyper-growth outlier still scaling toward maturity) makes P/E a fragile cross-sectional comparison across a peer set this small. EV/Revenue and EV/EBITDA are capital-structure- and earnings-quality-agnostic and are used as the primary comps range instead:
 
-**Comps-implied range: $9.85 – $75.54, median-multiple midpoint ≈ $31**
+**Comps-implied range: $10.45 – $80.14, median-multiple midpoint ≈ $33**
 
-Worth noting: with the loss-maker screened out, the median P/E of 25.8x implies **$29.43/share** — squarely in line with the EV/EBITDA median of $27.60 and the EV/Revenue median of $34.03. The corrected P/E now corroborates the headline range instead of contradicting it, which is itself a check that the screen was the right call.
+Worth noting: with the loss-maker screened out, the median P/E of 25.8x implies **$29.43/share** — squarely in line with the EV/EBITDA median of $29.28 and within range of the EV/Revenue median of $36.11. The corrected P/E now corroborates the headline range instead of contradicting it, which is itself a check that the screen was the right call.
 
 ## Interpreting the gap to market price
 
@@ -158,9 +199,9 @@ Both methods still land below CMG's current $36.95 price at their base case/medi
 
 ## Limitations
 
-- **Single-scenario base case.** No explicit bull/bear case beyond the WACC × terminal growth sensitivity grid. Revenue growth, margins, and reinvestment are all held at one path; only the discount rate and terminal growth are flexed.
+- **Scenarios flex revenue, margins, and terminal growth only.** CapEx, D&A, working capital, tax rate, and beta are held constant across bear/base/bull. A genuine bear case would probably also assume worse unit economics, not just fewer units.
 - **yfinance data quality.** Some fields (e.g. beta, EBITDA) are yfinance's own derived figures rather than pulled directly from filings, and can differ from other data providers.
 - **Small comp set.** Six peers is enough for a directional range, not a statistically robust sample — P/E in particular is easily skewed by one or two names (see above).
-- **Terminal reinvestment is not normalized.** CapEx stays at 5.0% of revenue against 3.0% D&A in the terminal year, so the perpetuity has CMG reinvesting at ~1.7x depreciation forever while growing only 3%. That is conservative by construction and is a meaningful part of why the DCF sits below market. Tying terminal reinvestment to growth and returns on capital would be the more standard treatment.
-- **Share count mixes vintages.** The bridge divides by last fiscal year's *average* diluted shares while the market comparison uses today's price. Those differ by roughly 6% given CMG's buyback pace.
+- **The implied-ROIC diagnostic is a check, not a constraint.** The model reports the return its terminal value assumes but does not force that number to match CMG's actual historical return on capital. Reading the diagnostic is still a manual step.
+- **The current share count is derived, not reported.** Market cap ÷ price recovers the count the market is pricing but is a basic figure, so it excludes unexercised dilution. The reported diluted average is stale in the other direction. Neither is exactly right.
 - **The lease-as-debt alternative is a config toggle, not a fully modeled scenario.** Flipping `treat_leases_as_debt` changes the bridge but does not add rent back to EBIT or depreciate the right-of-use asset, so it shows the direction of that treatment rather than a complete implementation of it.

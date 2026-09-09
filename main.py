@@ -19,10 +19,11 @@ from src.comps.peer_data import build_comps_table, peer_summary_stats
 from src.data.fetch import fetch_comp_snapshots, fetch_company_snapshot, fetch_risk_free_rate
 from src.dcf.equity_bridge import net_debt as dcf_net_debt
 from src.dcf.projections import build_fcf_projection
+from src.dcf.scenarios import run_all_scenarios
 from src.dcf.sensitivity import sensitivity_table
-from src.dcf.terminal_value import enterprise_value, gordon_growth_terminal_value
+from src.dcf.terminal_value import enterprise_value, gordon_growth_terminal_value, terminal_diagnostics
 from src.dcf.wacc import compute_wacc
-from src.output.charts import plot_revenue_projection, plot_valuation_summary
+from src.output.charts import plot_revenue_projection, plot_scenarios, plot_valuation_summary
 from src.output.report import save_table
 
 
@@ -70,25 +71,64 @@ def main() -> None:
         treat_leases_as_debt=bridge["treat_leases_as_debt"],
         lease_share_of_total_debt=bridge["lease_share_of_total_debt"],
     )
+    # Today's share count, not last fiscal year's average -- see the property's
+    # docstring in src/data/fetch.py. The two differ by ~6% for CMG.
+    shares = target.shares_outstanding_current
     equity_value = ev_result["enterprise_value"] - net_debt
-    dcf_price = equity_value / target.shares_diluted
+    dcf_price = equity_value / shares
 
     print(f"Enterprise value: ${ev_result['enterprise_value']/1e9:.2f}B")
     print(f"Net debt (leases excluded, net of cash): ${net_debt/1e9:.2f}B")
     print(f"Equity value: ${equity_value/1e9:.2f}B")
+    print(f"Diluted shares (current, not FY average): {shares/1e9:.4f}B")
     print(f"DCF implied share price: ${dcf_price:.2f}")
+
+    # The terminal value is most of the DCF, so report what it implies about
+    # returns rather than leaving that buried in the capex assumption.
+    last = projection.iloc[-1]
+    diag = terminal_diagnostics(
+        nopat=float(last["nopat"]),
+        capex=float(last["capex"]),
+        da=float(last["da"]),
+        nwc_change=float(last["nwc_change"]),
+        terminal_growth=terminal_growth,
+    )
+    print(
+        f"Terminal reinvestment: {diag['reinvestment_rate']:.1%} of NOPAT "
+        f"(capex {diag['capex_to_da']:.2f}x D&A) => implied ROIC {diag['implied_return_on_capital']:.1%}"
+    )
 
     sens = sensitivity_table(
         fcfs,
         assumptions["dcf"]["sensitivity"]["wacc_range"],
         assumptions["dcf"]["sensitivity"]["terminal_growth_range"],
         net_debt,
-        target.shares_diluted,
+        shares,
     )
     save_table(sens, "dcf_sensitivity")
 
     dcf_low = sens.min().min()
     dcf_high = sens.max().max()
+
+    # The grid above flexes the discount rate; these flex the business.
+    print("\nRunning bull / base / bear scenarios...")
+    scenarios = run_all_scenarios(
+        assumptions,
+        base_revenue=target.revenue,
+        base_year=base_year,
+        wacc=wacc,
+        net_debt=net_debt,
+        shares=shares,
+        current_price=target.price,
+    )
+    save_table(scenarios, "dcf_scenarios")
+    for name, row in scenarios.iterrows():
+        print(
+            f"  {name:<5} ${row['implied_share_price']:>6.2f}  "
+            f"({row['upside_vs_market']:+.0%} vs market, "
+            f"exit margin {row['exit_operating_margin']:.1%}, "
+            f"implied ROIC {row['implied_terminal_roic']:.1%})"
+        )
 
     # --- Comps ---
     print("\nBuilding comps table...")
@@ -126,6 +166,7 @@ def main() -> None:
         ticker=ticker,
     )
     plot_revenue_projection(projection, target.revenue, base_year, ticker)
+    plot_scenarios(scenarios, current_price=target.price, ticker=ticker)
 
     print(f"\nCurrent market price: ${target.price:.2f}")
     print("\nDone. See outputs/tables/ and outputs/figures/.")

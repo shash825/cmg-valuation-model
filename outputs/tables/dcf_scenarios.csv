@@ -1,0 +1,4 @@
+scenario,label,exit_revenue_bn,exit_operating_margin,terminal_growth,implied_terminal_roic,implied_share_price,upside_vs_market
+bear,"Bear: growth stalls, margins revert to the low end",14.299396625439197,0.145,0.02,0.10567216981132073,12.762495736698352,-0.654600927288272
+base,"Base: consensus for two years, then fade to trend",18.04386750807121,0.175,0.03,0.18478618421052628,21.19647964439136,-0.42634696496911073
+bull,Bull: reacceleration holds and throughput lifts margins,20.455748890281946,0.19,0.035,0.22859375000000004,27.586261617465876,-0.2534164650212213

@@ -80,3 +80,69 @@ def plot_revenue_projection(projection_df: pd.DataFrame, base_revenue: float, ba
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
     return out_path
+
+
+def plot_scenarios(scenarios_df: pd.DataFrame, current_price: float, ticker: str = "CMG") -> Path:
+    """Bar chart of implied share price under bear / base / bull operating cases.
+
+    Bars are coloured against the market price rather than by scenario name, so
+    the chart answers the only question that matters at a glance: which of these
+    cases would have to be true for the stock to be worth what it costs.
+    """
+    order = [s for s in ("bear", "base", "bull") if s in scenarios_df.index]
+    prices = [scenarios_df.loc[s, "implied_share_price"] for s in order]
+    colors = ["#55A868" if p >= current_price else "#4C72B0" for p in prices]
+
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    bars = ax.bar([s.capitalize() for s in order], prices, color=colors, width=0.55)
+
+    for bar, scenario, price in zip(bars, order, prices):
+        upside = scenarios_df.loc[scenario, "upside_vs_market"]
+        margin = scenarios_df.loc[scenario, "exit_operating_margin"]
+        ax.annotate(
+            f"${price:.2f}\n{upside:+.0%}",
+            (bar.get_x() + bar.get_width() / 2, price),
+            textcoords="offset points",
+            xytext=(0, 6),
+            ha="center",
+            fontsize=10,
+            fontweight="bold",
+        )
+        ax.annotate(
+            f"exit margin {margin:.1%}",
+            (bar.get_x() + bar.get_width() / 2, 0),
+            textcoords="offset points",
+            xytext=(0, 8),
+            ha="center",
+            fontsize=8,
+            color="white",
+        )
+
+    ax.axhline(current_price, color="#C44E52", linestyle="--", linewidth=1.5)
+    ax.annotate(
+        f"Current price: ${current_price:.2f}",
+        # x in axes fraction, y in data coords. Anchoring x in data coords is
+        # fragile here: matplotlib silently drops an annotation whose anchor
+        # falls outside the axis limits, and the limits of a categorical axis
+        # move with the bar width, so a hardcoded x can vanish without error.
+        (0.01, current_price),
+        xycoords=("axes fraction", "data"),
+        textcoords="offset points",
+        xytext=(0, 6),
+        ha="left",
+        color="#C44E52",
+        fontsize=9,
+        fontweight="bold",
+    )
+
+    ax.set_ylabel("Implied share price ($)")
+    ax.set_title(f"{ticker} — Implied Value by Operating Scenario")
+    ax.set_ylim(0, max(max(prices), current_price) * 1.25)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = FIGURES_DIR / "scenarios.png"
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    return out_path

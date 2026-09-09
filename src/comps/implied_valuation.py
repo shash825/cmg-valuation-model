@@ -36,7 +36,7 @@ def implied_valuation_from_comps(target: CompanySnapshot, peer_stats: pd.DataFra
                 "multiple": "EV/Revenue",
                 "stat": stat,
                 "multiple_value": ev_rev_mult,
-                "implied_share_price": implied_equity / target.shares_diluted,
+                "implied_share_price": implied_equity / target.shares_outstanding_current,
             }
         )
 
@@ -49,7 +49,7 @@ def implied_valuation_from_comps(target: CompanySnapshot, peer_stats: pd.DataFra
                     "multiple": "EV/EBITDA",
                     "stat": stat,
                     "multiple_value": ev_ebitda_mult,
-                    "implied_share_price": implied_equity / target.shares_diluted,
+                    "implied_share_price": implied_equity / target.shares_outstanding_current,
                 }
             )
 
